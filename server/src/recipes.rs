@@ -2,7 +2,9 @@ use crate::models;
 use crate::schema::recipes::dsl;
 use crate::AppState;
 use actix_web;
+use actix_web::error;
 use actix_web::{delete, get, patch, post, web, HttpResponse, Responder};
+use derive_more::{Display, Error};
 use diesel;
 use diesel::prelude::*;
 use std::sync::Mutex;
@@ -26,11 +28,11 @@ async fn patch_recipe(
 
     diesel::update(recipes.filter(id.eq(path.0)))
         .set((
-            title.eq(new_title),
-            making_time.eq(new_making_time),
-            serves.eq(new_serves),
-            ingredients.eq(new_ingredients),
-            cost.eq(new_cost),
+            title.eq(new_title.unwrap()),
+            making_time.eq(new_making_time.unwrap()),
+            serves.eq(new_serves.unwrap()),
+            ingredients.eq(new_ingredients.unwrap()),
+            cost.eq(new_cost.unwrap()),
         ))
         .execute(conn)
         .unwrap();
@@ -52,25 +54,53 @@ async fn patch_recipe(
     Ok(HttpResponse::Ok().json(response))
 }
 
+#[derive(Debug, Display, Error)]
+#[display(fmt = "message: {}, required: {}", message, required)]
+struct PostRequestError {
+    message: &'static str,
+    required: &'static str,
+}
+
+impl Default for PostRequestError {
+    fn default() -> Self {
+        Self {
+            message: &"Recipe creation failed!",
+            required: &"tltle, making_time, serves, ingredients, cost",
+        }
+    }
+}
+
+impl error::ResponseError for PostRequestError {}
+
 #[post("/recipes")]
 async fn post_recipe(
     request_json: web::Json<models::PostRecipeRequest>,
     data: web::Data<Mutex<AppState>>,
-) -> actix_web::Result<impl Responder> {
+) -> actix_web::Result<impl Responder, HttpResponse> {
+    println!("hello");
     use crate::schema::recipes::dsl::*;
     let conn = &data.lock().unwrap().pool;
     let request = request_json.into_inner();
 
-    let result: models::Recipe = diesel::insert_into(recipes)
+    let result: std::result::Result<models::Recipe, _> = diesel::insert_into(recipes)
         .values(request)
-        .get_result(conn)
-        .unwrap();
+        .get_result(conn);
 
-    let recipe = vec![models::RecipeJson::from(&result)];
-    let message = "Recipe successfully created!".to_string();
-    let response = models::PostRecipeResponse { message, recipe };
+    match result {
+        Ok(res) => {
+            let recipe = vec![models::RecipeJson::from(&res)];
+            let message = "Recipe successfully created!".to_string();
+            let response = models::PostRecipeResponse { message, recipe };
 
-    Ok(HttpResponse::Ok().json(response))
+            Ok(HttpResponse::Ok().json(response))
+        }
+        Err(_) => {
+            let s = r#"{"message":"Recipe creation failed!","required":"tltle, making_time, serves, ingredients, cost"}"#;
+            Err(HttpResponse::BadRequest()
+                .content_type("application/json")
+                .body(s))
+        }
+    }
 }
 
 #[get("/recipes")]

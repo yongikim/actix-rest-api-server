@@ -13,3 +13,4 @@ diesel = { version = "1.4.4", features = ["postgres", "chrono"] }
 dotenv = "0.15.0"
 chrono = "0.4.19"
 mysql = "*"
+derive_more = "0.99.14"

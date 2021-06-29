@@ -90,11 +90,11 @@ pub struct GetRecipesResponse {
 #[derive(Deserialize, Debug, Insertable, PartialEq)]
 #[table_name = "recipes"]
 pub struct PostRecipeRequest {
-  pub title: String,
-  pub making_time: String,
-  pub serves: String,
-  pub ingredients: String,
-  pub cost: i32,
+  pub title: Option<String>,
+  pub making_time: Option<String>,
+  pub serves: Option<String>,
+  pub ingredients: Option<String>,
+  pub cost: Option<i32>,
 }
 
 #[derive(Serialize, Debug)]
