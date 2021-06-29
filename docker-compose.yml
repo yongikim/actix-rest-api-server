@@ -1,0 +1,23 @@
+version: "3"
+
+services:
+  server:
+    build:
+      context: ./server
+      target: "develop-stage"
+    depends_on:
+      - db
+    ports:
+      - 80:8080
+    command: /bin/sh -c "diesel migration run && cargo watch -x run"
+    environment:
+      - CARGO_BUILD_TARGET_DIR=/tmp/target
+    volumes:
+      - ./server:/app
+  db:
+    build:
+      context: ./db
+    restart: always
+    environment:
+      POSTGRES_DB: freee
+      POSTGRES_PASSWORD: password
