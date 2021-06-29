@@ -10,8 +10,8 @@ RUN cargo build --release
 
 # Production
 FROM rust:1.53.0 as production
-WORKDIR /app
-RUN cargo install diesel_cli
-COPY . .
+COPY --from=build-stage /app/target/release/actix-rest-api-server .
+COPY --from=build-stage /app/.env .
 
 EXPOSE 8080
+CMD [ "/actix-rest-api-server" ]
